@@ -6,7 +6,7 @@ import 'package:komikap/models/firebase_models.dart';
 class DownloadManager {
   static final LocalCacheService _cacheService = LocalCacheService();
 
-  /// Download a chapter
+  /// Download a chapter with manga details
   static Future<void> downloadChapter({
     required String mangaId,
     required String chapterId,
@@ -15,6 +15,8 @@ class DownloadManager {
     required List<String> pageImageUrls,
     required Function(int) onProgress,
     required Function(String) onError,
+    String? mangaTitle,
+    String? mangaCoverUrl,
   }) async {
     try {
       print('Starting download: $chapterTitle');
@@ -40,9 +42,9 @@ class DownloadManager {
       }
 
       print('Pages downloaded: ${pageImagePaths.length}');
-      print('Saving to database...');
+      print('Saving chapter and manga details to database...');
 
-      // Save to database
+      // Save chapter to database
       final chapter = DownloadedChapter(
         id: '${mangaId}_${chapterId}',
         mangaId: mangaId,
@@ -55,7 +57,25 @@ class DownloadManager {
       );
 
       await _cacheService.saveDownloadedChapter(chapter);
-      print('Chapter saved successfully!');
+      print('✅ Chapter saved successfully!');
+
+      // Save manga details if provided
+      if (mangaTitle != null) {
+        final manga = SavedManga(
+          id: mangaId,
+          uid: 'offline', // Mark as offline download
+          mangaId: mangaId,
+          title: mangaTitle,
+          coverImageUrl: mangaCoverUrl,
+          lastChapterRead: chapterNumber,
+          savedAt: DateTime.now(),
+          lastReadAt: DateTime.now(),
+          isFavorite: false,
+        );
+        await _cacheService.saveMangaLocally(manga);
+        print('✅ Manga details saved successfully!');
+      }
+
       onProgress(100);
     } catch (e) {
       print('Download failed: $e');
@@ -105,6 +125,8 @@ class DownloadProgressDialog extends StatefulWidget {
   final String chapterId;
   final int chapterNumber;
   final List<String> pageUrls;
+  final String? mangaTitle;
+  final String? mangaCoverUrl;
 
   const DownloadProgressDialog({
     required this.chapterTitle,
@@ -112,6 +134,8 @@ class DownloadProgressDialog extends StatefulWidget {
     required this.chapterId,
     required this.chapterNumber,
     required this.pageUrls,
+    this.mangaTitle,
+    this.mangaCoverUrl,
   });
 
   @override
@@ -138,6 +162,8 @@ class _DownloadProgressDialogState extends State<DownloadProgressDialog> {
         chapterTitle: widget.chapterTitle,
         chapterNumber: widget.chapterNumber,
         pageImageUrls: widget.pageUrls,
+        mangaTitle: widget.mangaTitle,
+        mangaCoverUrl: widget.mangaCoverUrl,
         onProgress: (progress) {
           if (mounted) {
             setState(() {

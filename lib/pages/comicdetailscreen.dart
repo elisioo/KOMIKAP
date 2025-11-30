@@ -829,6 +829,10 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
       (index) => 'https://example.com/page_${index + 1}.jpg',
     );
 
+    // Get manga details from widget
+    final mangaTitle = widget.comic['title'] ?? 'Unknown Manga';
+    final mangaCoverUrl = widget.comic['coverUrl'] ?? '';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -838,6 +842,8 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
         chapterId: chapterId,
         chapterNumber: chapterNumber,
         pageUrls: mockPageUrls,
+        mangaTitle: mangaTitle,
+        mangaCoverUrl: mangaCoverUrl,
       ),
     );
   }
