@@ -32,7 +32,7 @@ class LocalCacheService {
   Future<Database> get database async {
     // On web, return a dummy database (operations will be no-ops)
     if (_isWebPlatform) {
-      print('⚠️ Web platform detected - SQLite operations disabled');
+      print(' Web platform detected - SQLite operations disabled');
       throw Exception('SQLite not available on web platform');
     }
 
@@ -68,15 +68,15 @@ class LocalCacheService {
           // Mobile: Use standard databases path
           final databasesPath = await getDatabasesPath();
           path = join(databasesPath, 'komikap_cache.db');
-          print('📱 Mobile database path: $path');
+          print(' Mobile database path: $path');
         } else {
           // Desktop: Use application documents directory
           // Note: path_provider is not used here to avoid web issues
           path = 'komikap_cache.db';
-          print('🖥️ Desktop database path: $path');
+          print(' Desktop database path: $path');
         }
       } catch (e) {
-        print('❌ Platform detection failed: $e');
+        print(' Platform detection failed: $e');
         throw Exception('Cannot initialize database on this platform');
       }
 
@@ -85,14 +85,14 @@ class LocalCacheService {
         version: 1,
         onCreate: _createTables,
         onOpen: (db) {
-          print('✅ Database opened successfully');
+          print('Database opened successfully');
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           // Handle database upgrades if needed
         },
       );
     } catch (e) {
-      print('❌ Error initializing database: $e');
+      print('Error initializing database: $e');
       rethrow;
     }
   }
@@ -158,7 +158,7 @@ class LocalCacheService {
         print('⚠️ Skipping cache on web platform');
         return;
       }
-      
+
       final db = await database;
       final now = DateTime.now();
       final expiresAt = now.add(ttl);
@@ -174,7 +174,7 @@ class LocalCacheService {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e) {
-      print('⚠️ Error caching data: $e');
+      print(' Error caching data: $e');
       // Don't rethrow on web - just log
     }
   }
@@ -184,7 +184,7 @@ class LocalCacheService {
       if (_isWebPlatform) {
         return null; // No cache on web
       }
-      
+
       final db = await database;
       final result = await db.query(
         'cache_entries',
@@ -213,13 +213,13 @@ class LocalCacheService {
   Future<void> clearExpiredCache() async {
     try {
       if (_isWebPlatform) return;
-      
+
       final db = await database;
       final now = DateTime.now().millisecondsSinceEpoch;
       await db
           .delete('cache_entries', where: 'expiresAt < ?', whereArgs: [now]);
     } catch (e) {
-      print('⚠️ Error clearing expired cache: $e');
+      print(' Error clearing expired cache: $e');
     }
   }
 
@@ -227,10 +227,10 @@ class LocalCacheService {
   Future<void> saveDownloadedChapter(DownloadedChapter chapter) async {
     try {
       if (_isWebPlatform) {
-        print('⚠️ Skipping download save on web platform');
+        print(' Skipping download save on web platform');
         return;
       }
-      
+
       print('Saving chapter to database: ${chapter.chapterTitle}');
       final db = await database;
       await db.insert(
@@ -247,9 +247,9 @@ class LocalCacheService {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      print('✅ Chapter saved successfully');
+      print(' Chapter saved successfully');
     } catch (e) {
-      print('❌ Error saving downloaded chapter: $e');
+      print(' Error saving downloaded chapter: $e');
       // Don't rethrow on web
     }
   }
@@ -257,7 +257,7 @@ class LocalCacheService {
   Future<DownloadedChapter?> getDownloadedChapter(String chapterId) async {
     try {
       if (_isWebPlatform) return null;
-      
+
       final db = await database;
       final result = await db.query(
         'downloaded_chapters',
@@ -280,7 +280,7 @@ class LocalCacheService {
         sizeInBytes: row['sizeInBytes'] as int,
       );
     } catch (e) {
-      print('⚠️ Error getting downloaded chapter: $e');
+      print(' Error getting downloaded chapter: $e');
       return null;
     }
   }
@@ -289,7 +289,7 @@ class LocalCacheService {
       String mangaId) async {
     try {
       if (_isWebPlatform) return [];
-      
+
       final db = await database;
       final results = await db.query(
         'downloaded_chapters',
@@ -320,7 +320,7 @@ class LocalCacheService {
   Future<void> deleteDownloadedChapter(String chapterId) async {
     try {
       if (_isWebPlatform) return;
-      
+
       final db = await database;
       await db.delete(
         'downloaded_chapters',
@@ -328,20 +328,20 @@ class LocalCacheService {
         whereArgs: [chapterId],
       );
     } catch (e) {
-      print('⚠️ Error deleting downloaded chapter: $e');
+      print(' Error deleting downloaded chapter: $e');
     }
   }
 
   Future<int> getTotalDownloadSize() async {
     try {
       if (_isWebPlatform) return 0;
-      
+
       final db = await database;
       final result = await db.rawQuery(
           'SELECT SUM(sizeInBytes) as total FROM downloaded_chapters');
       return (result.first['total'] as int?) ?? 0;
     } catch (e) {
-      print('⚠️ Error getting total download size: $e');
+      print(' Error getting total download size: $e');
       return 0;
     }
   }
@@ -350,10 +350,10 @@ class LocalCacheService {
   Future<void> saveMangaLocally(SavedManga manga) async {
     try {
       if (_isWebPlatform) {
-        print('⚠️ Skipping local manga save on web platform');
+        print('Skipping local manga save on web platform');
         return;
       }
-      
+
       final db = await database;
       await db.insert(
         'saved_manga',
@@ -371,7 +371,7 @@ class LocalCacheService {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e) {
-      print('⚠️ Error saving manga locally: $e');
+      print(' Error saving manga locally: $e');
       // Don't rethrow on web
     }
   }
@@ -379,7 +379,7 @@ class LocalCacheService {
   Future<SavedManga?> getSavedMangaLocally(String mangaId) async {
     try {
       if (_isWebPlatform) return null;
-      
+
       final db = await database;
       final result = await db.query(
         'saved_manga',
@@ -403,7 +403,7 @@ class LocalCacheService {
         isFavorite: (row['isFavorite'] as int) == 1,
       );
     } catch (e) {
-      print('⚠️ Error getting saved manga locally: $e');
+      print(' Error getting saved manga locally: $e');
       return null;
     }
   }
@@ -411,7 +411,7 @@ class LocalCacheService {
   Future<List<SavedManga>> getAllSavedMangaLocally(String uid) async {
     try {
       if (_isWebPlatform) return [];
-      
+
       final db = await database;
       final results = await db.query(
         'saved_manga',
@@ -435,7 +435,7 @@ class LocalCacheService {
         );
       }).toList();
     } catch (e) {
-      print('⚠️ Error getting all saved manga locally: $e');
+      print(' Error getting all saved manga locally: $e');
       return [];
     }
   }
@@ -443,13 +443,13 @@ class LocalCacheService {
   Future<void> clearAllData() async {
     try {
       if (_isWebPlatform) return;
-      
+
       final db = await database;
       await db.delete('cache_entries');
       await db.delete('downloaded_chapters');
       await db.delete('saved_manga');
     } catch (e) {
-      print('⚠️ Error clearing all data: $e');
+      print(' Error clearing all data: $e');
     }
   }
 }
