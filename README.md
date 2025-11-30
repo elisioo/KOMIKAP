@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # komikap
 
 A new Flutter project.
@@ -14,3 +15,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# KOMIKAP
+This is my first app development project. This project is a comic app where you can find and read your favorite manga comic in one app.
+>>>>>>> 020db69c66047c447c7d6d2e6e86ebfabfecb4a3
