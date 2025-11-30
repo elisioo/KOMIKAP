@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:komikap/pages/libraryscreen.dart';
 import 'package:komikap/pages/profilescreen.dart';
 import 'package:komikap/pages/searchscreen.dart';
-import 'package:komikap/pages/communityscreen.dart';
+import 'package:komikap/pages/community_screen_new.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -18,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     LibraryScreen(),
     SearchScreen(),
-    CommunityScreen(),
+    CommunityScreenNew(),
     ProfileScreen(),
   ];
 

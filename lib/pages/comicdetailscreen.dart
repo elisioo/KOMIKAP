@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/pages/readerscreen.dart';
+import 'package:komikap/pages/download_manager.dart';
 import 'package:komikap/state/manga_providers.dart';
 
 class ComicDetailScreen extends ConsumerStatefulWidget {
@@ -660,6 +661,35 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
 
         return Column(
           children: [
+            // Download All button header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Chapters',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showDownloadAllConfirmation(context, chapters, mangaId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFA855F7),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    icon: const Icon(Icons.download_outlined, size: 18),
+                    label: const Text(
+                      'Download All',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -706,6 +736,19 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.download_outlined),
+                          color: Colors.grey[400],
+                          iconSize: 20,
+                          onPressed: () => _downloadSingleChapter(
+                            context,
+                            mangaId,
+                            chapter.id,
+                            chapter.displayName,
+                            int.tryParse(chapter.chapter ?? '1') ?? 1,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         Icon(
                           Icons.arrow_forward_ios,
                           color: Colors.grey[400],
@@ -771,6 +814,96 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
         );
       },
     );
+  }
+
+  void _downloadSingleChapter(
+    BuildContext context,
+    String mangaId,
+    String chapterId,
+    String chapterTitle,
+    int chapterNumber,
+  ) {
+    // Mock page URLs
+    final mockPageUrls = List.generate(
+      20,
+      (index) => 'https://example.com/page_${index + 1}.jpg',
+    );
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => DownloadProgressDialog(
+        chapterTitle: chapterTitle,
+        mangaId: mangaId,
+        chapterId: chapterId,
+        chapterNumber: chapterNumber,
+        pageUrls: mockPageUrls,
+      ),
+    );
+  }
+
+  void _showDownloadAllConfirmation(
+    BuildContext context,
+    List<dynamic> chapters,
+    String mangaId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Download All Chapters?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Download all ${chapters.length} chapters?\n\nThis may take a while and use significant storage.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _downloadAllChapters(context, chapters, mangaId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFA855F7),
+            ),
+            child: const Text('Download All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadAllChapters(
+    BuildContext context,
+    List<dynamic> chapters,
+    String mangaId,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Starting download of ${chapters.length} chapters...'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    // Download chapters sequentially
+    for (int i = 0; i < chapters.length; i++) {
+      final chapter = chapters[i];
+      Future.delayed(Duration(milliseconds: i * 500), () {
+        _downloadSingleChapter(
+          context,
+          mangaId,
+          chapter.id,
+          chapter.displayName,
+          int.tryParse(chapter.chapter ?? '1') ?? 1,
+        );
+      });
+    }
   }
 
   Widget _buildMockChapterList() {

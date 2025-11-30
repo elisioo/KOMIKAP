@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "87971807571",
+    "project_id": "elii-2a822",
+    "storage_bucket": "elii-2a822.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:87971807571:android:760bc808abbd23abd861a6",
+        "android_client_info": {
+          "package_name": "com.example.komikap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDctC4iFmYpsyJUfDsrVoOGEdUwA4cbC6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:komikap/pages/settingscreen.dart';
+import 'package:komikap/pages/saved_manga_screen.dart';
+import 'package:komikap/pages/favorites_screen.dart';
+import 'package:komikap/pages/downloads_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -98,19 +101,45 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   _buildMenuTile(
                     context,
-                    Icons.library_books,
-                    'Reading List',
-                    () {},
+                    Icons.bookmark,
+                    'Saved Manga',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SavedMangaScreen(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   _buildMenuTile(
                     context,
-                    Icons.history,
-                    'Reading History',
-                    () {},
+                    Icons.favorite,
+                    'Favorites',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FavoritesScreen(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
-                  _buildMenuTile(context, Icons.download, 'Downloads', () {}),
+                  _buildMenuTile(
+                    context,
+                    Icons.download,
+                    'Downloads',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DownloadsScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 12),
                   _buildMenuTile(context, Icons.settings, 'Settings', () {
                     Navigator.push(
