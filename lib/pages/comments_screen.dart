@@ -50,7 +50,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
           elevation: 0,
         ),
         body: Center(
-          child: Text('Error: $error', style: const TextStyle(color: Colors.white)),
+          child: Text('Error: $error',
+              style: const TextStyle(color: Colors.white)),
         ),
       ),
       data: (user) {
@@ -59,7 +60,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
             backgroundColor: const Color(0xFF1A1A1A),
             appBar: AppBar(
               backgroundColor: const Color(0xFF1A1A1A),
-              title: const Text('Comments'),
+              title: const Text('Comments',
+                  style: TextStyle(color: Colors.white54)),
               elevation: 0,
             ),
             body: const Center(
@@ -75,11 +77,17 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
           backgroundColor: const Color(0xFF1A1A1A),
           appBar: AppBar(
             backgroundColor: const Color(0xFF1A1A1A),
-            title: const Text('Comments'),
+            title: const Text(
+              'Comments',
+              style: TextStyle(color: Colors.white54),
+            ),
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context),
+              style: IconButton.styleFrom(
+                foregroundColor: Colors.white54,
+              ),
             ),
           ),
           body: Column(
@@ -158,7 +166,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[600]),
+                            Icon(Icons.chat_bubble_outline,
+                                size: 64, color: Colors.grey[600]),
                             const SizedBox(height: 16),
                             const Text(
                               'No comments yet',
@@ -167,7 +176,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                             const SizedBox(height: 8),
                             const Text(
                               'Be the first to comment!',
-                              style: TextStyle(color: Colors.white54, fontSize: 12),
+                              style: TextStyle(
+                                  color: Colors.white54, fontSize: 12),
                             ),
                           ],
                         ),
@@ -230,14 +240,16 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                 IconButton(
                   onPressed: _isCommentingLoading
                       ? null
-                      : () => _addComment(user.uid, user.displayName ?? 'User', ref),
+                      : () => _addComment(
+                          user.uid, user.displayName ?? 'User', ref),
                   icon: _isCommentingLoading
                       ? const SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA855F7)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFFA855F7)),
                           ),
                         )
                       : const Icon(Icons.send),
@@ -251,7 +263,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
     );
   }
 
-  Widget _buildCommentTile(dynamic comment, String currentUserId, WidgetRef ref) {
+  Widget _buildCommentTile(
+      dynamic comment, String currentUserId, WidgetRef ref) {
     final isLiked = (comment.likedBy ?? []).contains(currentUserId);
 
     return Container(
@@ -333,7 +346,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: () => _toggleCommentLike(comment.id, currentUserId, isLiked, ref),
+                onTap: () =>
+                    _toggleCommentLike(comment.id, currentUserId, isLiked, ref),
                 child: Row(
                   children: [
                     Icon(
@@ -408,7 +422,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
     }
   }
 
-  void _toggleCommentLike(String commentId, String uid, bool isLiked, WidgetRef ref) async {
+  void _toggleCommentLike(
+      String commentId, String uid, bool isLiked, WidgetRef ref) async {
     try {
       final commentsNotifier = ref.read(
         commentsNotifierProvider(widget.postId).notifier,

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:komikap/services/firebase_service.dart';
 import 'package:komikap/services/local_cache_service.dart';
 import 'package:komikap/models/firebase_models.dart';
@@ -12,6 +13,9 @@ class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseService _firebaseService = FirebaseService();
   final LocalCacheService _cacheService = LocalCacheService();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
 
   String? get currentUserId => _firebaseAuth.currentUser?.uid;
   bool get isAuthenticated => _firebaseAuth.currentUser != null;
@@ -133,34 +137,40 @@ class AuthService {
     }
   }
 
-  /// Google Sign In (requires google_sign_in package)
+  /// Google Sign In
   Future<AuthResult> signInWithGoogle() async {
     try {
-      // TODO: Implement Google Sign-In
-      // Add to pubspec.yaml: google_sign_in: ^6.1.5
-      // Then uncomment the code below:
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();
 
-      /*
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-      );
-
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        return AuthResult(success: false, message: 'Google sign in cancelled');
+      // If user cancels the sign-in
+      if (googleAccount == null) {
+        return AuthResult(
+          success: false,
+          message: 'Google sign in cancelled',
+        );
       }
 
-      final GoogleSignInAuthentication auth = await account.authentication;
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleAccount.authentication;
+
+      // Create a new credential
       final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: auth.accessToken,
-        idToken: auth.idToken,
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      // Sign in to Firebase with the credential
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(credential);
       final user = userCredential.user;
 
       if (user == null) {
-        return AuthResult(success: false, message: 'Google sign in failed');
+        return AuthResult(
+          success: false,
+          message: 'Google sign in failed',
+        );
       }
 
       // Create user profile if new user
@@ -172,6 +182,21 @@ class AuthService {
         );
       }
 
+      // Cache user data locally
+      final userProfile = await _firebaseService.getUserProfile(user.uid);
+      if (userProfile != null) {
+        await _cacheService.saveMangaLocally(
+          SavedManga(
+            id: user.uid,
+            uid: user.uid,
+            mangaId: '',
+            title: userProfile.username,
+            savedAt: DateTime.now(),
+            lastReadAt: DateTime.now(),
+          ),
+        );
+      }
+
       return AuthResult(
         success: true,
         message: 'Google sign in successful',
@@ -180,14 +205,16 @@ class AuthService {
         email: user.email,
         provider: 'google',
       );
-      */
-
+    } on FirebaseAuthException catch (e) {
       return AuthResult(
         success: false,
-        message: 'Google Sign-In not yet configured. Please use email/password.',
+        message: _getFirebaseErrorMessage(e.code),
       );
     } catch (e) {
-      return AuthResult(success: false, message: 'Google sign in failed: $e');
+      return AuthResult(
+        success: false,
+        message: 'Google sign in failed: ${e.toString()}',
+      );
     }
   }
 
@@ -217,7 +244,14 @@ class AuthService {
   /// Logout
   Future<void> logout() async {
     try {
+      // Sign out from Google if signed in
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+      }
+
+      // Sign out from Firebase
       await _firebaseAuth.signOut();
+
       // Clear local cache on logout
       await _cacheService.clearAllData();
     } catch (e) {
@@ -256,6 +290,10 @@ class AuthService {
         return 'User account is disabled';
       case 'too-many-requests':
         return 'Too many login attempts. Try again later';
+      case 'account-exists-with-different-credential':
+        return 'Account exists with different sign-in method';
+      case 'invalid-credential':
+        return 'Invalid credentials';
       default:
         return 'Authentication error: $code';
     }
