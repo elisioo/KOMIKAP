@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/pages/comicdetailscreen.dart';
 import 'package:komikap/pages/viewallmangascreen.dart';
 import 'package:komikap/state/manga_providers.dart';
+import 'package:komikap/pages/readerscreen.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -73,10 +74,9 @@ class LibraryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use the providers defined in manga_providers.dart
     final trendingAsync = ref.watch(trendingMangaProvider);
     final recentAsync = ref.watch(recentlyUpdatedMangaProvider);
-    final continueReading = ref.watch(continueReadingProvider);
+    final continueReadingAsync = ref.watch(continueReadingProvider);
 
     return SafeArea(
       left: true,
@@ -147,102 +147,155 @@ class LibraryScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...continueReading.map((comic) {
-                      return GestureDetector(
-                        onTap: () {
-                          if (comic['id'] != 'continue-1') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    ComicDetailScreen(comic: comic),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF2A2A2A),
-                                const Color(0xFF1F1F1F),
-                              ],
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: _buildCoverImage(
-                                    comic['coverUrl'] ?? '',
-                                    width: 80,
-                                    height: 100,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        comic['title'] ?? 'Unknown',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        comic['chapter'] ?? 'Chapter 0',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[400],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: comic['progress'] ?? 0.0,
-                                          minHeight: 4,
-                                          backgroundColor: Colors.grey[700],
-                                          valueColor:
-                                              const AlwaysStoppedAnimation(
-                                                Color(0xFFA855F7),
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: const Color(0xFFA855F7),
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                    continueReadingAsync.when(
+                      loading: () => Text(
+                        'Loading your last read...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      error: (error, stack) => Text(
+                        'Unable to load last read',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                      data: (comic) {
+                        if (comic == null) {
+                          return Text(
+                            'Start reading a manga to see it here.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
+                          );
+                        }
+
+                        return GestureDetector(
+                          onTap: () async {
+                            final mangaId = comic['mangaId'] as String?;
+                            final title = comic['title'] as String? ?? 'Unknown';
+                            final coverUrl = comic['coverUrl'] as String? ?? '';
+                            final chapterNumber =
+                                comic['chapterNumber'] as int? ?? 0;
+
+                            if (mangaId == null || mangaId.isEmpty) {
+                              return;
+                            }
+
+                            try {
+                              final chapters = await ref.read(
+                                mangaChaptersProvider(mangaId).future,
+                              );
+
+                              if (chapters.isEmpty) {
+                                return;
+                              }
+
+                              var target = chapters.first;
+                              if (chapterNumber > 0) {
+                                final match = chapters.firstWhere(
+                                  (ch) =>
+                                      int.tryParse(ch.chapter ?? '') ==
+                                      chapterNumber,
+                                  orElse: () => chapters.first,
+                                );
+                                target = match;
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReaderScreen(
+                                    comic: {
+                                      'id': mangaId,
+                                      'mangaId': mangaId,
+                                      'title': title,
+                                      'author': '',
+                                      'coverUrl': coverUrl,
+                                    },
+                                    chapterId: target.id,
+                                    chapter:
+                                        int.tryParse(target.chapter ?? '1') ?? 1,
+                                    mangaId: mangaId,
+                                  ),
+                                ),
+                              );
+                            } catch (_) {}
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF2A2A2A),
+                                  Color(0xFF1F1F1F),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: _buildCoverImage(
+                                      comic['coverUrl'] ?? '',
+                                      width: 80,
+                                      height: 100,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comic['title'] ?? 'Unknown',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          comic['chapter'] ?? 'Chapter 1',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Color(0xFFA855F7),
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_arrow,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

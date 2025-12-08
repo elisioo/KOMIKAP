@@ -1,8 +1,30 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
 import '../services/local_cache_service.dart';
 import '../models/firebase_models.dart';
+
+// Theme Provider
+class ThemeNotifier extends StateNotifier<ThemeMode> {
+  ThemeNotifier() : super(ThemeMode.system);
+
+  void setThemeFromString(String themeLabel) {
+    switch (themeLabel) {
+      case 'Light':
+        state = ThemeMode.light;
+        break;
+      case 'Dark':
+        state = ThemeMode.dark;
+        break;
+      default:
+        state = ThemeMode.system;
+    }
+  }
+}
+
+final themeModeProvider =
+    StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) => ThemeNotifier());
 
 // Firebase Service Provider
 final firebaseServiceProvider = Provider((ref) => FirebaseService());
@@ -24,6 +46,16 @@ final authStateProvider = StreamProvider<User?>((ref) {
 final userProfileProvider = FutureProvider.family<UserProfile?, String>((ref, uid) async {
   final firebaseService = ref.watch(firebaseServiceProvider);
   return firebaseService.getUserProfile(uid);
+});
+
+final isFollowingUserProvider =
+    FutureProvider.family<bool, String>((ref, targetUid) async {
+  final firebaseService = ref.watch(firebaseServiceProvider);
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser == null || currentUser.uid == targetUid) {
+    return false;
+  }
+  return firebaseService.isFollowingUser(currentUser.uid, targetUid);
 });
 
 // Saved Manga Provider

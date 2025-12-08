@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/models/mangadexmanga.dart';
 import 'package:komikap/services/api/mangadexapiservice.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:komikap/state/firebase_providers.dart';
 
 // Initialize MangaDex service
 final mangaDexServiceProvider = Provider<MangaDexService>((ref) {
@@ -58,22 +60,30 @@ final recentlyUpdatedMangaProvider = FutureProvider<List<MangaDexManga>>((
   return service.getRecentlyUpdated(limit: 5);
 });
 
-// Continue reading list (local storage simulation)
-final continueReadingProvider = StateProvider<List<Map<String, dynamic>>>((
-  ref,
-) {
-  return [
-    {
-      'id': 'continue-1',
-      'title': 'Your Last Read Manga',
-      'author': 'Will appear here',
-      'chapter': 'Chapter 0',
-      'progress': 0.0,
-      'rating': 0.0,
-      'chapters': 0,
-      'coverUrl': '',
-    },
-  ];
+final continueReadingProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  final auth = FirebaseAuth.instance;
+  final user = auth.currentUser;
+  if (user == null) {
+    return null;
+  }
+
+  final savedMangaList = await ref.watch(savedMangaProvider(user.uid).future);
+  if (savedMangaList.isEmpty) {
+    return null;
+  }
+
+  final lastRead = savedMangaList.first;
+
+  return {
+    'id': lastRead.mangaId,
+    'mangaId': lastRead.mangaId,
+    'title': lastRead.title,
+    'coverUrl': lastRead.coverImageUrl ?? '',
+    'chapterNumber': lastRead.lastChapterRead,
+    'chapter': lastRead.lastChapterRead > 0
+        ? 'Chapter ${lastRead.lastChapterRead}'
+        : 'Chapter 1',
+  };
 });
 
 // ===== VIEW ALL SCREEN PROVIDERS =====

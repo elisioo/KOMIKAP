@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/state/firebase_providers.dart';
 import 'package:komikap/pages/comments_screen.dart';
+import 'package:komikap/pages/user_profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CommunityScreenNew extends ConsumerStatefulWidget {
@@ -24,8 +25,8 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    // Watch posts with auto-refresh every 3 seconds for real-time updates
-    final postsAsync = ref.watch(postsProvider);
+    // Watch posts via PostsNotifier so changes reflect immediately
+    final postsAsync = ref.watch(postsNotifierProvider);
 
     return authState.when(
       loading: () => const Scaffold(
@@ -146,7 +147,13 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final post = posts[index];
-                        return _buildPostCard(context, post, user.uid, ref);
+                        return _buildPostCard(
+                          context,
+                          post,
+                          user.uid,
+                          user.displayName ?? 'User',
+                          ref,
+                        );
                       },
                       childCount: posts.length,
                     ),
@@ -279,8 +286,20 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
     );
   }
 
-  Widget _buildPostCard(BuildContext context, dynamic post, String currentUserId, WidgetRef ref) {
+  Widget _buildPostCard(
+    BuildContext context,
+    dynamic post,
+    String currentUserId,
+    String currentUsername,
+    WidgetRef ref,
+  ) {
     final isLiked = (post.likedBy ?? []).contains(currentUserId);
+    final String displayName =
+        (post.username is String && (post.username as String).isNotEmpty)
+            ? post.username
+            : 'User';
+    final String avatarLetter =
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -294,38 +313,57 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Post header
             Row(
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: const Color(0xFFA855F7),
-                  child: Text(
-                    post.username.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.username,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UserProfileScreen(
+                            userId: post.uid,
+                            username: post.username,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _formatTime(post.createdAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      ),
-                    ],
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: const Color(0xFFA855F7),
+                          child: Text(
+                            avatarLetter,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              _formatTime(post.createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 if (post.uid == currentUserId)
@@ -374,7 +412,6 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
 
             const SizedBox(height: 16),
 
-            // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -388,13 +425,13 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
                   Icons.chat_bubble_outline,
                   'Comment',
                   Colors.grey[500],
-                  () => _showCommentDialog(context, post.id, currentUserId, ref),
-                ),
-                _buildActionButton(
-                  Icons.share_outlined,
-                  'Share',
-                  Colors.grey[500],
-                  () {},
+                  () => _showCommentDialog(
+                    context,
+                    post.id,
+                    currentUserId,
+                    currentUsername,
+                    ref,
+                  ),
                 ),
               ],
             ),
@@ -527,7 +564,13 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
     }
   }
 
-  void _showCommentDialog(BuildContext context, String postId, String uid, WidgetRef ref) {
+  void _showCommentDialog(
+    BuildContext context,
+    String postId,
+    String uid,
+    String username,
+    WidgetRef ref,
+  ) {
     final commentController = TextEditingController();
 
     showDialog(
@@ -565,7 +608,7 @@ class _CommunityScreenNewState extends ConsumerState<CommunityScreenNew> {
                 );
                 await commentsNotifier.addComment(
                   uid: uid,
-                  username: 'User',
+                  username: username,
                   content: commentController.text,
                 );
 

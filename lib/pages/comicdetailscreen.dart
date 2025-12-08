@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/pages/readerscreen.dart';
 import 'package:komikap/pages/download_manager.dart';
 import 'package:komikap/state/manga_providers.dart';
+import 'package:komikap/state/firebase_providers.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ComicDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> comic;
@@ -465,13 +467,51 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
                           _buildActionButton(
                             icon: Icons.bookmark_border,
                             label: 'Save',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Added to bookmarks'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
+                            onTap: () async {
+                              if (mangaId == null || (mangaId is String && mangaId.isEmpty)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Unable to save this manga'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please login to save manga'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              try {
+                                await ref
+                                    .read(savedMangaNotifierProvider(user.uid).notifier)
+                                    .saveManga(
+                                      mangaId: mangaId,
+                                      title: title,
+                                      coverImageUrl: coverUrl,
+                                    );
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Added to bookmarks'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              } catch (_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to save manga'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                           ),
                           const SizedBox(width: 12),

@@ -80,6 +80,8 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
         'followersCount': 0,
         'followingCount': 0,
+        'privateProfile': false,
+        'showReadingActivity': true,
       });
     } catch (e) {
       print('Error creating user profile: $e');
@@ -213,17 +215,50 @@ class FirebaseService {
   Future<void> updateLastChapterRead(
       String uid, String mangaId, int chapterNumber) async {
     try {
-      await _firestore
+      final docRef = _firestore
           .collection('users')
           .doc(uid)
           .collection('savedManga')
-          .doc(mangaId)
-          .update({
-        'lastChapterRead': chapterNumber,
-        'lastReadAt': FieldValue.serverTimestamp(),
-      });
+          .doc(mangaId);
+
+      await docRef.set(
+        {
+          'lastChapterRead': chapterNumber,
+          'lastReadAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
     } catch (e) {
       print('Error updating last chapter read: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> ensureSavedMangaAndUpdateLastChapterRead({
+    required String uid,
+    required String mangaId,
+    required String title,
+    String? coverImageUrl,
+    required int chapterNumber,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('savedManga')
+          .doc(mangaId);
+      final snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        await saveManga(
+          uid: uid,
+          mangaId: mangaId,
+          title: title,
+          coverImageUrl: coverImageUrl,
+        );
+      }
+      await updateLastChapterRead(uid, mangaId, chapterNumber);
+    } catch (e) {
+      print('Error ensuring saved manga and updating last chapter: $e');
       rethrow;
     }
   }
@@ -449,6 +484,117 @@ class FirebaseService {
     } catch (e) {
       print('Error getting comments: $e');
       return [];
+    }
+  }
+
+  Future<bool> isFollowingUser(String currentUid, String targetUid) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('following')
+          .doc(targetUid)
+          .get();
+
+      return doc.exists;
+    } catch (e) {
+      print('Error checking follow status: $e');
+      return false;
+    }
+  }
+
+  Future<void> followUser(String currentUid, String targetUid) async {
+    if (currentUid == targetUid) return;
+
+    try {
+      final followingRef = _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('following')
+          .doc(targetUid);
+
+      final existing = await followingRef.get();
+      if (existing.exists) {
+        return;
+      }
+
+      final followersRef = _firestore
+          .collection('users')
+          .doc(targetUid)
+          .collection('followers')
+          .doc(currentUid);
+
+      final currentUserRef = _firestore.collection('users').doc(currentUid);
+      final targetUserRef = _firestore.collection('users').doc(targetUid);
+
+      final batch = _firestore.batch();
+
+      batch.set(followingRef, {
+        'uid': targetUid,
+        'followedAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(followersRef, {
+        'uid': currentUid,
+        'followedAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.update(currentUserRef, {
+        'followingCount': FieldValue.increment(1),
+      });
+
+      batch.update(targetUserRef, {
+        'followersCount': FieldValue.increment(1),
+      });
+
+      await batch.commit();
+    } catch (e) {
+      print('Error following user: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> unfollowUser(String currentUid, String targetUid) async {
+    if (currentUid == targetUid) return;
+
+    try {
+      final followingRef = _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('following')
+          .doc(targetUid);
+
+      final existing = await followingRef.get();
+      if (!existing.exists) {
+        return;
+      }
+
+      final followersRef = _firestore
+          .collection('users')
+          .doc(targetUid)
+          .collection('followers')
+          .doc(currentUid);
+
+      final currentUserRef = _firestore.collection('users').doc(currentUid);
+      final targetUserRef = _firestore.collection('users').doc(targetUid);
+
+      final batch = _firestore.batch();
+
+      batch.delete(followingRef);
+      batch.delete(followersRef);
+
+      batch.update(currentUserRef, {
+        'followingCount': FieldValue.increment(-1),
+      });
+
+      batch.update(targetUserRef, {
+        'followersCount': FieldValue.increment(-1),
+      });
+
+      await batch.commit();
+    } catch (e) {
+      print('Error unfollowing user: $e');
+      rethrow;
     }
   }
 

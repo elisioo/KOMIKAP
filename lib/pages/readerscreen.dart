@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/pages/comicpageview.dart';
 import 'package:komikap/state/manga_providers.dart';
 import 'package:komikap/models/mangadexmanga.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:komikap/state/firebase_providers.dart';
 
 // State providers for reader settings
 final readerModeProvider = StateProvider<ReadingMode>(
@@ -33,6 +35,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   late String currentChapterId;
   int currentChapterIndex = 0;
   List<MangaDexChapter> allChapters = [];
+  int currentChapterNumber = 0;
 
   @override
   void initState() {
@@ -53,12 +56,44 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         );
         if (currentChapterIndex == -1) currentChapterIndex = 0;
       }
+      if (allChapters.isNotEmpty && currentChapterIndex >= 0 && currentChapterIndex < allChapters.length) {
+        final chapter = allChapters[currentChapterIndex];
+        currentChapterNumber = int.tryParse(chapter.chapter ?? '') ?? widget.chapter;
+        _updateLastChapterRead();
+      }
     });
   }
 
   @override
   void dispose() {
+    _updateLastChapterRead();
     super.dispose();
+  }
+
+  Future<void> _updateLastChapterRead() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        return;
+      }
+
+      if (currentChapterNumber <= 0) {
+        return;
+      }
+
+      final firebaseService = ref.read(firebaseServiceProvider);
+      final title = widget.comic['title'] ?? 'Unknown';
+      final coverUrl = widget.comic['coverUrl'] ?? widget.comic['coverImageUrl'];
+      await firebaseService.ensureSavedMangaAndUpdateLastChapterRead(
+        uid: user.uid,
+        mangaId: widget.mangaId,
+        title: title,
+        coverImageUrl: coverUrl,
+        chapterNumber: currentChapterNumber,
+      );
+      ref.invalidate(savedMangaProvider(user.uid));
+      ref.invalidate(continueReadingProvider);
+    } catch (_) {}
   }
 
   void _navigateToChapter(String chapterId, int index) {
@@ -66,6 +101,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       currentChapterId = chapterId;
       currentChapterIndex = index;
       currentPage = 0;
+      if (allChapters.isNotEmpty && index >= 0 && index < allChapters.length) {
+        final chapter = allChapters[index];
+        currentChapterNumber = int.tryParse(chapter.chapter ?? '') ?? currentChapterNumber;
+        _updateLastChapterRead();
+      }
     });
     Navigator.pop(context); // Close the chapter list
   }

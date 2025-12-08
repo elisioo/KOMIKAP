@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:komikap/pages/auth/introscreen.dart';
 import 'package:komikap/pages/privacysecurityscreen.dart';
+import 'package:komikap/state/firebase_providers.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  // TODO: Get from SettingsProvider
-  String selectedTheme = 'Light';
-  String selectedFont = 'Roboto';
-  double fontSize = 16.0;
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String selectedTheme = 'System';
   String readingMode = 'Vertical';
-  bool bookmarkSync = true;
-  bool progressSync = true;
-  bool autoRotate = false;
-  bool notifications = true;
-  double brightness = 0.8;
+  String selectedFont = 'Roboto';
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+    selectedTheme = _themeLabelFromMode(themeMode);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -38,50 +35,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _showThemeDialog(),
           ),
 
-          ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Brightness'),
-            subtitle: Slider(
-              value: brightness,
-              min: 0.2,
-              max: 1.0,
-              divisions: 8,
-              label: '${(brightness * 100).round()}%',
-              onChanged: (value) {
-                setState(() => brightness = value);
-                // TODO: Save to SettingsProvider
-              },
-            ),
-          ),
-
           const Divider(),
 
-          // Reading Settings
+          // Reading Section
           _buildSectionHeader('Reading'),
-
-          ListTile(
-            leading: const Icon(Icons.font_download),
-            title: const Text('Font Family'),
-            subtitle: Text(selectedFont),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showFontDialog(),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.format_size),
-            title: const Text('Font Size'),
-            subtitle: Slider(
-              value: fontSize,
-              min: 12.0,
-              max: 24.0,
-              divisions: 12,
-              label: fontSize.toStringAsFixed(0),
-              onChanged: (value) {
-                setState(() => fontSize = value);
-                // TODO: Save to SettingsProvider
-              },
-            ),
-          ),
 
           ListTile(
             leading: const Icon(Icons.view_agenda),
@@ -89,69 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(readingMode),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showReadingModeDialog(),
-          ),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.screen_rotation),
-            title: const Text('Auto Rotate'),
-            subtitle: const Text('Automatically rotate screen while reading'),
-            value: autoRotate,
-            onChanged: (value) {
-              setState(() => autoRotate = value);
-              // TODO: Save to SettingsProvider
-            },
-          ),
-
-          const Divider(),
-
-          // Sync & Backup
-          _buildSectionHeader('Sync & Backup'),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.bookmark),
-            title: const Text('Sync Bookmarks'),
-            subtitle: const Text('Sync bookmarks across devices'),
-            value: bookmarkSync,
-            onChanged: (value) {
-              setState(() => bookmarkSync = value);
-              // TODO: Save to SettingsProvider
-            },
-          ),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.sync),
-            title: const Text('Sync Reading Progress'),
-            subtitle: const Text('Sync your reading progress'),
-            value: progressSync,
-            onChanged: (value) {
-              setState(() => progressSync = value);
-              // TODO: Save to SettingsProvider
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.backup),
-            title: const Text('Backup & Restore'),
-            subtitle: const Text('Backup your data to cloud'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to backup screen
-            },
-          ),
-
-          const Divider(),
-
-          // Notifications
-          _buildSectionHeader('Notifications'),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications),
-            title: const Text('Push Notifications'),
-            subtitle: const Text('Receive updates about new chapters'),
-            value: notifications,
-            onChanged: (value) {
-              setState(() => notifications = value);
-            },
           ),
 
           const Divider(),
@@ -173,71 +67,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          ListTile(
-            leading: const Icon(Icons.lock),
-            title: const Text('Change Password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to change password screen
-            },
-          ),
-
-          ListTile(
-            leading: Icon(Icons.cancel, color: Colors.orange[700]),
-            title: Text(
-              'Deactivate Account',
-              style: TextStyle(color: Colors.orange[700]),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showDeactivateDialog(),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text(
-              'Delete Account',
-              style: TextStyle(color: Colors.red),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showDeleteDialog(),
-          ),
-
           const Divider(),
 
           // About Section
           _buildSectionHeader('About'),
 
           ListTile(
-            leading: const Icon(Icons.help),
-            title: const Text('Help & Support'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About Komikap'),
+            subtitle: const Text('Manga reader built with Flutter'),
           ),
 
           ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('About'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.description),
-            title: const Text('Terms of Service'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Privacy Policy'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('Terms & Privacy'),
           ),
 
           const SizedBox(height: 16),
 
-          // Version info
           Center(
             child: Text(
               'Version 1.0.0',
@@ -245,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
           // Logout button
           Padding(
@@ -280,6 +127,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _themeLabelFromMode(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+      default:
+        return 'System';
+    }
+  }
+
   void _showThemeDialog() {
     showDialog(
       context: context,
@@ -294,8 +153,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               groupValue: selectedTheme,
               onChanged: (value) {
                 setState(() => selectedTheme = value!);
+                ref.read(themeModeProvider.notifier).setThemeFromString(value!);
                 Navigator.pop(context);
-                // TODO: Update theme via ThemeFactory and SettingsProvider
               },
             );
           }).toList(),

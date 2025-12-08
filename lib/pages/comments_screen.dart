@@ -33,7 +33,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    final commentsAsync = ref.watch(commentsProvider(widget.postId));
+    final commentsAsync = ref.watch(commentsNotifierProvider(widget.postId));
 
     return authState.when(
       loading: () => const Scaffold(
@@ -73,6 +73,11 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
           );
         }
 
+        final String postAuthorName =
+            widget.postAuthor.isNotEmpty ? widget.postAuthor : 'User';
+        final String postAuthorInitial =
+            postAuthorName[0].toUpperCase();
+
         return Scaffold(
           backgroundColor: const Color(0xFF1A1A1A),
           appBar: AppBar(
@@ -110,7 +115,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                           radius: 20,
                           backgroundColor: const Color(0xFFA855F7),
                           child: Text(
-                            widget.postAuthor.substring(0, 1).toUpperCase(),
+                            postAuthorInitial,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -120,7 +125,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            widget.postAuthor,
+                            postAuthorName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -266,6 +271,12 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
   Widget _buildCommentTile(
       dynamic comment, String currentUserId, WidgetRef ref) {
     final isLiked = (comment.likedBy ?? []).contains(currentUserId);
+    final String displayName =
+        (comment.username is String && (comment.username as String).isNotEmpty)
+            ? comment.username
+            : 'User';
+    final String avatarLetter =
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -285,7 +296,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                 radius: 16,
                 backgroundColor: const Color(0xFFA855F7),
                 child: Text(
-                  comment.username.substring(0, 1).toUpperCase(),
+                  avatarLetter,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -299,7 +310,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      comment.username,
+                      displayName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

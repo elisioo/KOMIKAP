@@ -6,16 +6,42 @@ import 'package:komikap/models/mangadexmanga.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+final selectedGenreProvider = StateProvider<String>((ref) => 'All');
+
 final searchResultsProvider = FutureProvider.autoDispose<List<MangaDexManga>>((
   ref,
 ) async {
   final query = ref.watch(searchQueryProvider);
+  final selectedGenre = ref.watch(selectedGenreProvider);
   final service = ref.watch(mangaDexServiceProvider);
 
-  if (query.isEmpty) {
-    return service.getPopularManga(limit: 20);
+  if (query.isEmpty && selectedGenre == 'All') {
+    return service.getPopularManga(limit: 40);
   }
-  return service.searchManga(query, limit: 20);
+
+  List<String>? includedTags;
+  if (selectedGenre != 'All') {
+    try {
+      final tags = await service.getTags();
+      Map<String, dynamic>? matchedTag;
+      for (final tag in tags) {
+        final name = (tag['name'] as String?) ?? '';
+        if (name.toLowerCase() == selectedGenre.toLowerCase()) {
+          matchedTag = tag;
+          break;
+        }
+      }
+      if (matchedTag != null) {
+        includedTags = [matchedTag['id'] as String];
+      }
+    } catch (_) {}
+  }
+
+  return service.searchManga(
+    query,
+    limit: 40,
+    includedTags: includedTags,
+  );
 });
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -40,6 +66,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   ];
 
   String selectedGenre = 'All';
+  bool showAll = false;
 
   Widget _buildCoverImage(String coverUrl, {double? width, double? height}) {
     if (coverUrl.isEmpty) {
@@ -115,6 +142,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final searchResults = ref.watch(searchResultsProvider);
+    final bool isSearching =
+        _searchController.text.isNotEmpty || selectedGenre != 'All';
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A1A),
@@ -181,7 +210,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: GestureDetector(
                       onTap: () {
-                        setState(() => selectedGenre = genre['name'] as String);
+                        final name = genre['name'] as String;
+                        setState(() {
+                          selectedGenre = name;
+                          showAll = false;
+                        });
+                        ref.read(selectedGenreProvider.notifier).state = name;
                         // TODO: Implement genre filtering
                       },
                       child: Container(
@@ -226,13 +260,33 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Text(
-                _searchController.text.isEmpty ? 'Trending' : 'Search Results',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isSearching ? 'Search Results' : 'Trending',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (selectedGenre != 'All')
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          showAll = !showAll;
+                        });
+                      },
+                      child: Text(
+                        showAll ? 'Show less' : 'See all',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFA855F7),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -315,6 +369,105 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ],
                       ),
                     ),
+                  ),
+                );
+              }
+
+              if (showAll && selectedGenre != 'All') {
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final manga = mangas[index];
+                      final coverUrl = manga.getCoverUrl();
+
+                      return Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ComicDetailScreen(
+                                  comic: {
+                                    'id': manga.id,
+                                    'mangaId': manga.id,
+                                    'title': manga.title,
+                                    'author': manga.authors.isNotEmpty
+                                        ? manga.authors.join(', ')
+                                        : 'Unknown Author',
+                                    'artist': manga.artists.isNotEmpty
+                                        ? manga.artists.join(', ')
+                                        : 'Unknown Artist',
+                                    'coverUrl': coverUrl,
+                                    'synopsis':
+                                        manga.description ??
+                                        'No description available.',
+                                    'description':
+                                        manga.description ??
+                                        'No description available.',
+                                    'status': manga.status,
+                                    'tags': manga.tags,
+                                    'genres': manga.tags.take(5).toList(),
+                                    'rating':
+                                        0.0, // MangaDex API doesn't provide ratings in listing
+                                    'chapters':
+                                        0, // Would need separate API call
+                                    'source': 'MangaDex',
+                                    'ageRating': _getAgeRating(manga.tags),
+                                    'createdAt':
+                                        manga.createdAt?.toString() ?? '',
+                                    'updatedAt':
+                                        manga.updatedAt?.toString() ?? '',
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildCoverImage(
+                                coverUrl,
+                                width: 80,
+                                height: 120,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      manga.title,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      manga.authors.isNotEmpty
+                                          ? manga.authors.first
+                                          : 'Unknown Author',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[500],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: mangas.length,
                   ),
                 );
               }

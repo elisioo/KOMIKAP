@@ -11,6 +11,8 @@ class UserProfile {
   final DateTime updatedAt;
   final int followersCount;
   final int followingCount;
+  final bool privateProfile;
+  final bool showReadingActivity;
 
   UserProfile({
     required this.uid,
@@ -22,6 +24,8 @@ class UserProfile {
     required this.updatedAt,
     this.followersCount = 0,
     this.followingCount = 0,
+    this.privateProfile = false,
+    this.showReadingActivity = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +39,8 @@ class UserProfile {
       'updatedAt': updatedAt,
       'followersCount': followersCount,
       'followingCount': followingCount,
+      'privateProfile': privateProfile,
+      'showReadingActivity': showReadingActivity,
     };
   }
 
@@ -49,6 +55,8 @@ class UserProfile {
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       followersCount: map['followersCount'] ?? 0,
       followingCount: map['followingCount'] ?? 0,
+      privateProfile: map['privateProfile'] ?? false,
+      showReadingActivity: map['showReadingActivity'] ?? true,
     );
   }
 }
