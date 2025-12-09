@@ -61,6 +61,34 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
     final ageRating = widget.comic['ageRating'] ?? '+14';
     final mangaId = widget.comic['id'] ?? widget.comic['mangaId'];
 
+    final currentUser = FirebaseAuth.instance.currentUser;
+    bool isSaved = false;
+    bool isFavorite = false;
+
+    if (currentUser != null &&
+        mangaId != null &&
+        (mangaId is String && mangaId.isNotEmpty)) {
+      final savedMangaState =
+          ref.watch(savedMangaNotifierProvider(currentUser.uid));
+      final savedList = savedMangaState.asData?.value ?? const [];
+
+      dynamic savedEntry;
+      for (final m in savedList) {
+        if (m.mangaId == mangaId) {
+          savedEntry = m;
+          break;
+        }
+      }
+
+      if (savedEntry != null) {
+        isSaved = true;
+        final favFlag = (savedEntry as dynamic).isFavorite;
+        if (favFlag == true) {
+          isFavorite = true;
+        }
+      }
+    }
+
     print('🎨 Comic Details:');
     print('   Title: $title');
     print('   Author: $author');
@@ -465,7 +493,7 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
                         children: [
                           // Save Button
                           _buildActionButton(
-                            icon: Icons.bookmark_border,
+                            icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
                             label: 'Save',
                             onTap: () async {
                               if (mangaId == null || (mangaId is String && mangaId.isEmpty)) {
@@ -596,15 +624,68 @@ class _ComicDetailScreenState extends ConsumerState<ComicDetailScreen> {
 
                           // Favorites Button
                           _buildActionButton(
-                            icon: Icons.favorite_border,
+                            icon:
+                                isFavorite ? Icons.favorite : Icons.favorite_border,
                             label: 'Fav',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Added to favorites'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
+                            onTap: () async {
+                              if (mangaId == null || (mangaId is String && mangaId.isEmpty)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Unable to update favorites for this manga'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please login to manage favorites'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              try {
+                                final notifier = ref.read(
+                                  savedMangaNotifierProvider(user.uid).notifier,
+                                );
+
+                                if (!isSaved) {
+                                  await notifier.saveManga(
+                                    mangaId: mangaId,
+                                    title: title,
+                                    coverImageUrl: coverUrl,
+                                  );
+                                }
+
+                                final newFavoriteState = !isFavorite;
+                                await notifier.toggleFavorite(
+                                  mangaId as String,
+                                  newFavoriteState,
+                                );
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      newFavoriteState
+                                          ? 'Added to favorites'
+                                          : 'Removed from favorites',
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              } catch (_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to update favorites'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                           ),
                         ],

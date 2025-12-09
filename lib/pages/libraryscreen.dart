@@ -72,6 +72,160 @@ class LibraryScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildContinueReadingCard({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String mangaId,
+    required String title,
+    required String coverUrl,
+    required String chapterLabel,
+    required int chapterNumber,
+    double? progressValue,
+    String? progressText,
+  }) {
+    double? displayProgress = progressValue;
+
+    if (displayProgress != null) {
+      if (displayProgress < 0) {
+        displayProgress = 0;
+      } else if (displayProgress > 1) {
+        displayProgress = 1;
+      }
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        if (mangaId.isEmpty) {
+          return;
+        }
+
+        try {
+          final chapters = await ref.read(
+            mangaChaptersProvider(mangaId).future,
+          );
+
+          if (chapters.isEmpty) {
+            return;
+          }
+
+          var target = chapters.first;
+          if (chapterNumber > 0) {
+            final match = chapters.firstWhere(
+              (ch) => int.tryParse(ch.chapter ?? '') == chapterNumber,
+              orElse: () => chapters.first,
+            );
+            target = match;
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReaderScreen(
+                comic: {
+                  'id': mangaId,
+                  'mangaId': mangaId,
+                  'title': title,
+                  'author': '',
+                  'coverUrl': coverUrl,
+                },
+                chapterId: target.id,
+                chapter: int.tryParse(target.chapter ?? '1') ?? 1,
+                mangaId: mangaId,
+              ),
+            ),
+          );
+        } catch (_) {}
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF2A2A2A),
+              Color(0xFF1F1F1F),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.1),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildCoverImage(
+                  coverUrl,
+                  width: 80,
+                  height: 100,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      chapterLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    if (displayProgress != null && progressText != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: displayProgress,
+                          minHeight: 4,
+                          backgroundColor: Colors.grey[800],
+                          color: const Color(0xFFA855F7),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        progressText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFA855F7),
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trendingAsync = ref.watch(trendingMangaProvider);
@@ -173,126 +327,92 @@ class LibraryScreen extends ConsumerWidget {
                           );
                         }
 
-                        return GestureDetector(
-                          onTap: () async {
-                            final mangaId = comic['mangaId'] as String?;
-                            final title = comic['title'] as String? ?? 'Unknown';
-                            final coverUrl = comic['coverUrl'] as String? ?? '';
-                            final chapterNumber =
-                                comic['chapterNumber'] as int? ?? 0;
+                        final mangaId = comic['mangaId'] as String? ?? '';
+                        final title = comic['title'] as String? ?? 'Unknown';
+                        final coverUrl = comic['coverUrl'] as String? ?? '';
+                        final chapterNumber =
+                            comic['chapterNumber'] as int? ?? 0;
+                        final chapterLabel =
+                            comic['chapter'] as String? ?? 'Chapter 1';
 
-                            if (mangaId == null || mangaId.isEmpty) {
-                              return;
+                        if (mangaId.isEmpty) {
+                          return _buildContinueReadingCard(
+                            context: context,
+                            ref: ref,
+                            mangaId: mangaId,
+                            title: title,
+                            coverUrl: coverUrl,
+                            chapterLabel: chapterLabel,
+                            chapterNumber: chapterNumber,
+                          );
+                        }
+
+                        final chaptersAsync =
+                            ref.watch(mangaChaptersProvider(mangaId));
+
+                        return chaptersAsync.when(
+                          loading: () {
+                            return _buildContinueReadingCard(
+                              context: context,
+                              ref: ref,
+                              mangaId: mangaId,
+                              title: title,
+                              coverUrl: coverUrl,
+                              chapterLabel: chapterLabel,
+                              chapterNumber: chapterNumber,
+                            );
+                          },
+                          error: (error, stack) {
+                            return _buildContinueReadingCard(
+                              context: context,
+                              ref: ref,
+                              mangaId: mangaId,
+                              title: title,
+                              coverUrl: coverUrl,
+                              chapterLabel: chapterLabel,
+                              chapterNumber: chapterNumber,
+                            );
+                          },
+                          data: (chapters) {
+                            int totalChapters = 0;
+
+                            for (final ch in chapters) {
+                              final numValue = int.tryParse(ch.chapter ?? '');
+                              if (numValue != null && numValue > 0) {
+                                if (numValue > totalChapters) {
+                                  totalChapters = numValue;
+                                }
+                              }
                             }
 
-                            try {
-                              final chapters = await ref.read(
-                                mangaChaptersProvider(mangaId).future,
-                              );
+                            double? progressValue;
+                            String? progressText;
 
-                              if (chapters.isEmpty) {
-                                return;
+                            if (totalChapters > 0 && chapterNumber > 0) {
+                              var safeChapter = chapterNumber;
+                              if (safeChapter < 0) {
+                                safeChapter = 0;
+                              } else if (safeChapter > totalChapters) {
+                                safeChapter = totalChapters;
                               }
 
-                              var target = chapters.first;
-                              if (chapterNumber > 0) {
-                                final match = chapters.firstWhere(
-                                  (ch) =>
-                                      int.tryParse(ch.chapter ?? '') ==
-                                      chapterNumber,
-                                  orElse: () => chapters.first,
-                                );
-                                target = match;
-                              }
+                              progressValue = safeChapter / totalChapters;
+                              progressText =
+                                  'Chapter $safeChapter of $totalChapters';
+                            }
 
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReaderScreen(
-                                    comic: {
-                                      'id': mangaId,
-                                      'mangaId': mangaId,
-                                      'title': title,
-                                      'author': '',
-                                      'coverUrl': coverUrl,
-                                    },
-                                    chapterId: target.id,
-                                    chapter:
-                                        int.tryParse(target.chapter ?? '1') ?? 1,
-                                    mangaId: mangaId,
-                                  ),
-                                ),
-                              );
-                            } catch (_) {}
+                            return _buildContinueReadingCard(
+                              context: context,
+                              ref: ref,
+                              mangaId: mangaId,
+                              title: title,
+                              coverUrl: coverUrl,
+                              chapterLabel: chapterLabel,
+                              chapterNumber: chapterNumber,
+                              progressValue: progressValue,
+                              progressText: progressText,
+                            );
                           },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF2A2A2A),
-                                  Color(0xFF1F1F1F),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: _buildCoverImage(
-                                      comic['coverUrl'] ?? '',
-                                      width: 80,
-                                      height: 100,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          comic['title'] ?? 'Unknown',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          comic['chapter'] ?? 'Chapter 1',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[400],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFFA855F7),
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_arrow,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                         );
                       },
                     ),
