@@ -18,6 +18,7 @@ KOMIKAP is a manga reader app built with Flutter. It lets you discover, read, an
 ## Setup
 
 1. **Prerequisites**
+
    - Flutter SDK installed
    - Android Studio or VS Code with Flutter/Dart plugins
    - Firebase project (for Auth & Firestore)
@@ -31,6 +32,7 @@ KOMIKAP is a manga reader app built with Flutter. It lets you discover, read, an
    ```
 
 3. **Configure Firebase**
+
    - Create a Firebase project.
    - Add an Android app (e.g. `com.example.komikap`).
    - Download `google-services.json` and place it in `android/app/`.
@@ -77,13 +79,6 @@ KOMIKAP is a manga reader app built with Flutter. It lets you discover, read, an
 
 ## Screenshots
 
-Add your app screenshots in this section.
-
-[SCREENSHOT_PLACEHOLDER]
-
-Replace `SCREENSHOT_PLACEHOLDER` with a Markdown image, for example:
-
-```markdown
-![Home Screen](assets/screenshots/home.png)
-```
-
+![Home Screen](assets/screenshots/home.jpeg)
+![Comic Detail Screen](assets/screenshots/comicdetail.jpeg)
+![Reader Screen](assets/screenshots/reader.jpeg)

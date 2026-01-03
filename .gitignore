@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+#must hide
+/lib/widgets/firebase_options.dart
+/node_modules/
+
 # Symbolication related
 app.*.symbols
 
