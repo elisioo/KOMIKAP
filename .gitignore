@@ -34,8 +34,9 @@ migrate_working_dir/
 /coverage/
 
 #must hide
-/lib/widgets/firebase_options.dart
-/node_modules/
+/lib/firebase_options.dart
+/node_modules/mangadex-full-api
+/node_modules/.package-lock.json
 
 # Symbolication related
 app.*.symbols
